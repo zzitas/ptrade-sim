@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# 运行时数据(本地缓存与日志,不入库)
+data_cache/
+logs/
+*.log
+_selftest_logs.txt
+
+# 私有策略与个人文件默认不入库
+ptrade_七星动态池.py
+jq_七星动态池.py
+pt_wufu*.py
+pt_7x*.py
+*_wechat.html
+*_analysis.md
+
+# IDE / 系统
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
