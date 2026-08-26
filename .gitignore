@@ -1,0 +1,19 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# ---- 运行时生成的数据/日志(体积大,非源码) ----
+ptrade_sim/data_cache/
+logs/
+*.whl
+*.zip
+
+# ---- 本地打包产物 / 编辑器 ----
+ptrade-sim/
+jq-to-ptrade.zip
+.idea/
+.vscode/
+.mimocode/

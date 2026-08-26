@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从趋势永存到五福七星</title>
+</head>
+<body>
+
+<!-- ========== 微信公众号正文排版 ========== -->
+<!-- 使用说明：复制下方 section 整块到微信公众号编辑器（建议用"壹伴"或"135编辑器"粘贴） -->
+
+<section style="max-width: 680px; margin: 0 auto; padding: 20px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif; color: #333; font-size: 16px; line-height: 1.8; letter-spacing: 0.5px;">
+
+<!-- 标题区 -->
+<section style="text-align: center; margin-bottom: 30px;">
+<p style="font-size: 13px; color: #888; letter-spacing: 2px; margin-bottom: 8px;">量化策略深度研究</p>
+<h1 style="font-size: 22px; font-weight: bold; color: #1a1a1a; line-height: 1.5; margin-bottom: 10px;">从趋势永存到五福七星</h1>
+<h2 style="font-size: 16px; font-weight: normal; color: #666; line-height: 1.5; margin-top: 0;">一条动量因子的十年漂流与过拟合陷阱</h2>
+<p style="font-size: 13px; color: #999; margin-top: 12px;">——聚宽社区最火ETF轮动策略的理论溯源与批判性分析</p>
+</section>
+
+<section style="border-left: 4px solid #c0392b; background: #fdf2f2; padding: 14px 16px; margin: 24px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; color: #555; line-height: 1.8;">聚宽社区里，五福和七星的回测曲线被传得神乎其神。有人连夜冲了进去，也有人冷静地指出"回测如画，实盘拉胯"。本文从2017年一本英文书里的一个公式开始，一路追踪到2026年聚宽社区最火的两个策略。</p>
+</section>
+
+<!-- ========== 第一章 ========== -->
+<section style="margin-top: 36px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 01</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">源头——2017年，一本英文书与一个公式</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">1.1 这本书写了什么</h3>
+
+<p>2017年，安德烈亚斯·F.克列诺（Andreas F. Clenow）出版了《趋势永存：打败市场的动量策略》（<em>Stocks on the Move</em>）。克列诺是瑞士ACIES Asset Management AG的首席投资官，他在书中描述了一个在其基金公司<strong style="color: #c0392b;">运行了20多年</strong>的策略。</p>
+
+<section style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; margin: 16px 0; font-size: 14px; color: #666;">
+📚 <strong>参考文献：</strong>Clenow, A. F. (2017). <em>Stocks on the Move: Beating the Market with Momentum</em>. John Wiley & Sons.
+</section>
+
+<p>策略的核心极其简单，克列诺自己总结为一句话：<strong style="color: #c0392b;">"买入上涨的股票"</strong>。展开为完整的系统：</p>
+
+<!-- 表格样式 -->
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #2c3e50; color: #fff;">
+<th style="padding: 10px 12px; text-align: left; font-weight: bold;">步骤</th>
+<th style="padding: 10px 12px; text-align: left; font-weight: bold;">内容</th>
+<th style="padding: 10px 12px; text-align: left; font-weight: bold;">理论依据</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">熊市过滤</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">标普500的200日均线判断熊市，熊市则空仓</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #888;">趋势过滤器（Murphy, 1999）</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">个股筛选</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">剔除价格在100日均线下的股票；剔除过去90天存在15%以上价格缺口的股票</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #888;">流动性与信号纯度过滤</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">动量计算</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">对价格序列做指数回归，用R²表示拟合程度，二者乘积作为分数给股票排名</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; color: #888;">动量因子（Jegadeesh & Titman, 1993）</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px;">仓位管理</td>
+<td style="padding: 10px 12px;">引入ATR计算头寸规模</td>
+<td style="padding: 10px 12px; color: #888;">波动率标准化（Wilder, 1978）</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<p><strong style="color: #c0392b;">第三点，是整个故事的起点。</strong></p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">1.2 那个公式，到底在算什么</h3>
+
+<p>公式极其简单：</p>
+
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 15px; text-align: center; letter-spacing: 1px;">
+score = annualized_return × R²
+</section>
+
+<p><strong>第一步：对数价格对时间的线性回归</strong></p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">y = np.log(close_prices)           # 对数价格
+x = np.arange(len(y))              # 时间序列 [0, 1, 2, ...]
+slope, intercept = np.polyfit(x, y, 1)  # 最小二乘</pre>
+</section>
+
+<p><code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 14px;">slope</code> 代表每日对数收益率的平均值。年化后：</p>
+
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 15px; text-align: center;">
+annualized = e<sup>slope × 250</sup> − 1
+</section>
+
+<p><strong>第二步：计算R²</strong></p>
+
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 15px; text-align: center;">
+R² = 1 − Σ(yᵢ − ŷᵢ)² / Σ(yᵢ − ȳ)²
+</section>
+
+<p>R²衡量的是线性模型对数据变异的解释比例。在金融语境中，它衡量的是<strong>"趋势的连续性"</strong>——价格是否沿一条直线稳步上升，而非暴涨暴跌。</p>
+
+<p><strong>第三步：相乘</strong></p>
+
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 15px; text-align: center;">
+score = annualized × R²
+</section>
+
+<section style="background: #fff9e6; border-left: 4px solid #f39c12; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>为什么要乘？</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">斜率单独不够。一只股票暴涨暴跌，年化收益率可能很高，但R²很低——说明趋势不连续。乘以R²相当于对"脉冲式上涨"降权，奖励"稳步上涨"的标的。</p>
+</section>
+
+<p><strong>统计学本质：</strong>这个公式的经济含义是找到"趋势最稳定、且斜率最陡"的标的。它本质上是一个<strong>信号-噪声比</strong>（Signal-to-Noise Ratio）的代理变量。斜率（annualized return）是信号，R²是信号的纯度。</p>
+
+<p><strong style="color: #c0392b;">这个因子有一个重要的背书：它不是某个人拍脑袋想出来的，而是一家对冲基金运行了20多年的策略核心。不存在过拟合，不存在未来函数。</strong></p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">1.3 理论根基：动量因子的学术传统</h3>
+
+<p>克列诺的公式并非凭空创造，它有深厚的学术根基：</p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #3498db;">
+<p style="margin: 0 0 12px 0;"><strong>Jegadeesh & Titman (1993)</strong>：首次系统性记录了动量效应——过去3-12个月表现好的股票在未来3-12个月继续表现好。这是金融学最robust的经验规律之一。</p>
+<p style="margin: 0 0 12px 0;"><strong>Asness, Moskowitz & Pedersen (2013)</strong>：证明动量因子在全球多个资产类别（股票、债券、货币、商品）中都有效，是一个系统性的风险溢价。</p>
+<p style="margin: 0;"><strong>Novy-Marx (2013)</strong>：发现"质量动量"（盈利质量高的股票动量效应更强），为动量因子提供了基本面支撑。</p>
+</section>
+
+<p>克列诺的公式之所以有效，是因为它在经典动量因子的基础上，加入了R²作为"趋势纯度"的度量——这等价于对动量信号做了一个<strong>夏普比标准化</strong>。</p>
+</section>
+
+<!-- ========== 第二章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 02</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">第一次移植——wywy1995与4只ETF的轮动</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">2.1 为什么从股票换到ETF？</h3>
+
+<p>2019-2020年，聚宽用户开始尝试把克列诺的公式从股票移植到ETF。</p>
+
+<p>为什么是ETF？因为ETF天然分散，没有个股黑天鹅。而且ETF之间的相关性可以事先控制，轮动起来更有规律。</p>
+
+<p><strong style="color: #c0392b;">wywy1995是其中最关键的一个人。</strong>他做了一件极其正确的事：把公式从股票移植到ETF，同时固定了一个只有4只ETF的"核心资产池"。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">2.2 那个经典的25行代码</h3>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">g.etf_pool = [
+    '518880.XSHG',   # 黄金ETF
+    '513100.XSHG',   # 纳指ETF
+    '159915.XSHE',   # 创业板ETF
+    '510180.XSHG',   # 上证180ETF
+]
+g.m_days = 25
+
+def get_rank(etf_pool):
+    score_list = []
+    for etf in etf_pool:
+        df = attribute_history(etf, g.m_days, '1d', ['close'])
+        y = np.log(df.close)
+        x = np.arange(len(y))
+        # ★ 没有 w 参数，纯等权回归
+        slope, intercept = np.polyfit(x, y, 1)
+        annualized = math.pow(math.exp(slope), 250) - 1
+        r_squared = 1 - (sum((y - (slope*x + intercept))**2) /
+                         ((len(y)-1) * np.var(y, ddof=1)))
+        score = annualized * r_squared
+        score_list.append(score)
+    # 取得分最高的那只，全仓买入</pre>
+</section>
+
+<p>注意：这里没有任何权重。<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 14px;">np.polyfit(x, y, 1)</code> 默认全权重为1。这是纯粹的<strong>普通最小二乘法（OLS）</strong>，每个数据点的权重完全相同。</p>
+
+<p><strong>统计学含义：</strong>OLS回归中，每个观测值对斜率估计的贡献完全相等。这意味着第1天和第25天的价格对趋势估计的影响是一样的。这是最"诚实"的估计方式——没有人为引入任何先验偏好。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">2.3 前作：比代码更重要的东西</h3>
+
+<p>在写出策略代码之前，wywy1995还写了一篇更重要的文章——<strong>"从相关系数角度探讨ETF轮动的可行性"</strong>。</p>
+
+<p>这篇文章的核心结论：</p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #27ae60;">
+<p style="margin: 0 0 10px 0;">✅ 排除高度正相关（r>0.9）：沪深300与上证50成分股高度重合，轮动无意义</p>
+<p style="margin: 0 0 10px 0;">✅ 排除长期负相关：长期负相关的品种必然不断创新低，没有配置价值</p>
+<p style="margin: 0;">✅ 选择中低相关（0.15~0.85）且基本面逻辑迥异的资产</p>
+</section>
+
+<p>他选出的四只ETF：</p>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #27ae60; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">ETF</th>
+<th style="padding: 10px 12px; text-align: left;">代表</th>
+<th style="padding: 10px 12px; text-align: left;">宏观逻辑</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">518880.XSHG</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">黄金</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">避险/抗通胀</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">513100.XSHG</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">纳指</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">海外科技/成长</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">159915.XSHE</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">创业板</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">国内成长/小盘</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px;">510180.XSHG</td>
+<td style="padding: 10px 12px;">上证180</td>
+<td style="padding: 10px 12px;">国内价值/大盘</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<p>这四类资产分别对应经济周期中不同的风险敞口——它们的低相关性，是轮动策略能够持续产生超额收益的<strong>"土壤"</strong>。</p>
+
+<section style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; margin: 16px 0; font-size: 14px; color: #666;">
+📖 <strong>理论依据：</strong>这与Brinson, Hood & Beebower (1986)的经典资产配置研究一致——资产配置贡献了投资组合收益变异的90%以上。
+</section>
+
+<p><strong>代码是术，前作是道。</strong>真正有价值的，是通过相关系数论证"为什么这四类资产值得长期轮动"。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">2.4 关于25日：一个必须正视的问题</h3>
+
+<p>《趋势永存》原书用的是90天动量。但wywy1995的策略里，<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 14px;">g.m_days = 25</code>。</p>
+
+<p>为什么是25天？社区里有人做过测试：</p>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #8e44ad; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">参数</th>
+<th style="padding: 10px 12px; text-align: right;">9年总收益</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">20日</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right;">208%</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">22日</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right;">446%</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">24日</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right;">729%</td>
+</tr>
+<tr style="background: #fff3cd;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; font-weight: bold;">25日</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #c0392b;">836%</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">26日</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right;">887%</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">27日</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right;">742%</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px;">30日</td>
+<td style="padding: 10px 12px; text-align: right;">550%</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<p>25日确实是一个局部最优解。但问题是：这个局部最优是"鲁棒的"还是"脆弱的"？</p>
+
+<p>从数据来看，24日到26日，收益从729%到887%，波动158个百分点。<strong style="color: #c0392b;">不存在平稳区域</strong>——参数稍微一动，收益剧烈变化。这是过拟合的典型特征。</p>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>更深层的问题：</strong>克列诺原书使用90天（一个季度），背后有清晰的经济学逻辑——季度财报周期。而25天（约一个月）对应什么经济周期？没有明确的理论支撑。它更像是在A股市场的回测中被"找到"的。</p>
+</section>
+</section>
+
+<!-- ========== 第三章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 03</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">加权的出现——后续策略的"画蛇添足"</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">3.1 加权的代码</h3>
+
+<p>wywy1995的原始策略使用的是纯等权回归，没有任何权重。</p>
+
+<p>而 <code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 14px;">np.linspace(1, 2, len(y))</code> 出现在：</p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #e74c3c;">
+<p style="margin: 0 0 8px 0;">• 五合一策略的策略一、策略二中</p>
+<p style="margin: 0 0 8px 0;">• 五福5.2的动量计算中</p>
+<p style="margin: 0;">• 七星175的动量计算中</p>
+</section>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">weights = np.linspace(1, 2, len(y))
+slope, intercept = np.polyfit(x, y, 1, w=weights)</pre>
+</section>
+
+<p>对于25天的数据，权重序列是：<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-size: 14px;">[1.0, 1.04, 1.08, ..., 2.0]</code></p>
+
+<p><strong style="color: #c0392b;">最旧的数据权重是1.0，最新的数据权重是2.0。旧数据的权重仍然是新数据的50%。</strong></p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">3.2 硬核分析一：有效样本量（ESS）</h3>
+
+<p>在统计学中，衡量加权回归"有效样本量"的指标是：</p>
+
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 15px; text-align: center;">
+N_eff = (Σwᵢ)² / Σwᵢ²
+</section>
+
+<p>这个公式来源于Kish (1965)的有效样本量理论，是抽样调查学中的经典工具。</p>
+
+<p>对于25天、权重从1到2：</p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #3498db;">
+<p style="margin: 0 0 8px 0;">权重序列：wᵢ = 1 + (i-1)/24</p>
+<p style="margin: 0 0 8px 0;">Σwᵢ = 1.5 × 25 = 37.5</p>
+<p style="margin: 0;">Σwᵢ² ≈ 58.51</p>
+</section>
+
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 15px; text-align: center;">
+N_eff = 37.5² / 58.51 ≈ 24.04
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>结论：等效等权样本量约为24天。</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">也就是说，在斜率的方差稳定性上，25日线性加权（1→2）几乎等同于24日等权回归。权重变化极其温和，几乎没有缩短有效样本量。</p>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">3.3 硬核分析二：边际影响力</h3>
+
+<p>从"最新一天价格对斜率的影响力"来看：</p>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #2c3e50; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">指标</th>
+<th style="padding: 10px 12px; text-align: center;">线性加权(1→2)</th>
+<th style="padding: 10px 12px; text-align: center;">等权(24天)</th>
+<th style="padding: 10px 12px; text-align: center;">等权(19天)</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">最新数据权重占比</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold;">5.33%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center;">4.17%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center;">5.26%</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<p>最新数据的影响力约等于19天等权——这是线性加权实际产生的"近期偏好"程度。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">3.4 硬核分析三：这个加权设计的问题</h3>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #c0392b; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">指标</th>
+<th style="padding: 10px 12px; text-align: center;">数值</th>
+<th style="padding: 10px 12px; text-align: left;">含义</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">等效样本量</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold;">24天</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">几乎等于等权</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">最新数据影响力</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center;">19天等权</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">近期偏好极其有限</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">最旧数据权重占比</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center;">2.67%</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">仍保有相当影响力</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px;">前10天总权重占比</td>
+<td style="padding: 10px 12px; text-align: center; font-weight: bold; color: #c0392b;">≈ 38%</td>
+<td style="padding: 10px 12px;">近半权重来自10天前的旧数据</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<p>它两头不靠：</p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #e74c3c;">
+<p style="margin: 0 0 8px 0;">❌ 旧数据（前10天）仍占近40%权重，没有被有效衰减</p>
+<p style="margin: 0 0 8px 0;">❌ 新数据的影响力仅相当于19天等权，没有显著提升</p>
+<p style="margin: 0;">❌ 等效样本量≈24天，几乎等于没加权</p>
+</section>
+
+<p><strong>如果目标是"缩短周期"</strong>，直接使用15日等权更干净。<strong>如果目标是"强调近期"</strong>，指数衰减（半衰期8~12天）更有效。</p>
+
+<p>线性加权（1→2）引入了额外的复杂度，却没有带来实质性的参数偏移。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">3.5 替代方案的理论对比</h3>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+<thead>
+<tr style="background: #2c3e50; color: #fff;">
+<th style="padding: 10px 8px; text-align: left;">方法</th>
+<th style="padding: 10px 8px; text-align: center;">等效样本量</th>
+<th style="padding: 10px 8px; text-align: center;">近期偏好</th>
+<th style="padding: 10px 8px; text-align: center;">复杂度</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee;">等权（25天）</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">25</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">无</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">最低</td>
+</tr>
+<tr>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee;">线性加权（1→2）</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">≈24</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center; color: #c0392b;">微弱</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">中等</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee;">指数衰减（半衰期10天）</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center; color: #27ae60;">≈15</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center; color: #27ae60; font-weight: bold;">显著</td>
+<td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center;">中等</td>
+</tr>
+<tr>
+<td style="padding: 10px 8px;">等权（15天）</td>
+<td style="padding: 10px 8px; text-align: center;">15</td>
+<td style="padding: 10px 8px; text-align: center;">无</td>
+<td style="padding: 10px 8px; text-align: center;">最低</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>结论：</strong>如果想强调近期信息，指数衰减是更干净的选择。它的统计性质有明确的理论支撑——在信号处理中，指数衰减窗口对应于一阶IIR滤波器。</p>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">3.6 硬核分析四：R²计算中的统计错误</h3>
+
+<p>在五合一策略的策略一中，R²的计算：</p>
+
+<section style="background: #1a1a2e; color: #e06060; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;"># ❌ 错误写法
+ss_tot = np.sum(weights * (y - np.mean(y)) ** 2)</pre>
+</section>
+
+<p>对于加权回归，这是<strong style="color: #c0392b;">错误的</strong>。正确写法：</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;"># ✅ 正确写法
+y_weighted_mean = np.average(y, weights=weights)
+ss_tot = np.sum(weights * (y - y_weighted_mean) ** 2)</pre>
+</section>
+
+<p><strong style="color: #c0392b;">这个错误表明，代码作者可能并未深入理解加权回归的统计学含义，只是沿用了社区流传的写法。</strong></p>
+</section>
+
+<!-- ========== 第四章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 04</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">ETF池的演变——从4只到100只再到60只</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">4.1 四个阶段</h3>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #2c3e50; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">阶段</th>
+<th style="padding: 10px 12px; text-align: left;">策略</th>
+<th style="padding: 10px 12px; text-align: center;">池子规模</th>
+<th style="padding: 10px 12px; text-align: left;">池子逻辑</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">第一阶段</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">wywy1995</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #27ae60; font-weight: bold;">4只</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">宏观低相关</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">第二阶段</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">五合一</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #e74c3c;">~100只</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">固定池+动态池</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">第三阶段</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">五福5.2</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #e74c3c;">~100只</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">全球+中国，走弱期切换</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px;">第四阶段</td>
+<td style="padding: 10px 12px;">七星175</td>
+<td style="padding: 10px 12px; text-align: center; color: #f39c12;">~60只</td>
+<td style="padding: 10px 12px;">海外+商品+A股，从197只精简</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">4.2 五合一的池子</h3>
+
+<p>璐璐202006的"五合一"策略，ETF池分为：</p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #e74c3c;">
+<p style="margin: 0 0 8px 0;">• 全球/海外ETF池：17只（大宗商品+海外ETF）</p>
+<p style="margin: 0 0 8px 0;">• 中国ETF池：约80只（港股+指数+行业）</p>
+<p style="margin: 0;">• 合计近100只</p>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>问题一：Beta被稀释。</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">wywy1995的4只ETF代表的是<strong>宏观风险敞口</strong>（增长、通胀、避险、价值）。而100只ETF中包含大量行业ETF（半导体、酒、军工、光伏等），它们代表的是<strong>产业景气度</strong>，而非宏观风险敞口。</p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">当黄金和半导体在同一个池子里竞争时，黄金的避险属性被稀释了——它现在要和半导体抢票，而不是作为一个独立的宏观对冲工具。</p>
+</section>
+
+<section style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; margin: 16px 0; font-size: 14px; color: #666;">
+📖 <strong>理论依据：</strong>Ross (1976)的APT理论认为，资产收益由系统性风险因子驱动。4只ETF覆盖的是宏观因子（利率、通胀、增长），而100只ETF中大量行业ETF暴露的是行业特异性因子——后者不应成为轮动的依据。
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>问题二：过拟合空间指数级增长。</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">4只ETF的池子，参数优化的空间极其有限。100只ETF的池子，配合十几个参数，优化空间呈指数级增长。</p>
+</section>
+</section>
+
+<!-- ========== 第五章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 05</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">五合一的逻辑撕裂</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">5.1 绝对动量 vs 相对动量</h3>
+
+<p>五合一的五个子策略中：</p>
+
+<p><strong>策略一和策略二：</strong>要求得分必须大于0才买入——<strong>绝对动量</strong>，只在上涨时买入。</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;"># 策略二：显式要求 >0
+if not df_slope.empty and df_slope['momentum'].iloc[0] > 0:
+    return df_slope.index[0]
+return None</pre>
+</section>
+
+<p><strong>策略三和策略四：</strong>得分最高就买入，不管正负——<strong>相对动量</strong>，下跌中选跌得最少的。</p>
+
+<section style="background: #1a1a2e; color: #e06060; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;"># 策略三/四：没有score>0检查
+df = df.sort_values(by='score', ascending=False)
+top = df.iloc[0]
+if top['buy']:  # buy条件为 ret20 < 0.15
+    g.s3_selected = df.index[0]</pre>
+</section>
+
+<p>两种逻辑本身都成立，但它们<strong style="color: #c0392b;">不能混在一起</strong>。</p>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>在熊市中：</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">• 策略一、二建议空仓</p>
+<p style="margin: 4px 0 0 0; font-size: 15px; line-height: 1.8;">• 策略三、四硬选一只"跌得最少"的ETF买入</p>
+<p style="margin: 4px 0 0 0; font-size: 15px; line-height: 1.8;">• 投票结果：2票买入对3票空仓</p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">投票机制在逻辑冲突的情况下，保护的是那些逻辑有缺陷的子策略。</p>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">5.2 她拿了池子，没拿逻辑</h3>
+
+<p>璐璐明确说参考了wywy1995的四大核心轮动。她复制了那四只核心ETF，但没有保留纯粹动量信号：</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;"># wywy1995的原始逻辑
+score = annualized_short * r_sq_short
+
+# 五合一策略三/四的改写
+score = (annualized_short * r_sq_short) - (annualized_long * r_sq_long / 6)</pre>
+</section>
+
+<p><strong>她拿了Beta的池子，但换了Alpha的逻辑。</strong></p>
+</section>
+
+<!-- ========== 第六章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 06</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">五福5.2——日内趋势的"手术刀"</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">6.1 共同基因</h3>
+
+<p>五福5.2的动量计算与wywy1995同源，但加了权重：</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">def calculate_momentum_score(price_series, lookback_days):
+    recent = price_series[-(lookback_days + 1):]
+    y = np.log(recent)
+    x = np.arange(len(y))
+    weights = np.linspace(1, 2, len(y))  # ★ 这里加了权重
+    W = weights ** 2
+    # ... 计算 slope、annualized、r_squared
+    score = annualized * r_squared
+    return score</pre>
+</section>
+
+<p>同样的25日，同样的公式，但加了低效的线性权重。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">6.2 核心创新：日内趋势确认</h3>
+
+<p>五福5.2最大的创新是<strong>日内趋势确认</strong>：</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">def check_intraday_trend(security, context):
+    minute_data = get_price(security, count=30, frequency='1m', fields=['close'])
+    closes = minute_data['close'].values
+    closes = closes[closes > 0]
+    if len(closes) < 5:
+        return False
+    x = np.arange(len(closes))
+    slope = np.polyfit(x, closes, 1)[0]
+    mean_price = closes.mean()
+    slope_pct = slope / mean_price * 100  # ★ 归一化
+    return slope_pct > 0.001  # ★ 阈值</pre>
+</section>
+
+<p><strong>亮点：斜率归一化。</strong>不同ETF价格量级不同，直接用斜率无法跨标的比较。通过除以平均价格再乘以100，转化为"每分钟涨跌幅百分比"，实现了可比性。</p>
+
+<p><strong style="color: #c0392b;">问题：阈值0.001是怎么来的？</strong>为什么不是0.0005或0.002？这个值大概率是在回测中调的。</p>
+
+<p><strong>买入流程：</strong></p>
+
+<section style="margin: 16px 0; padding-left: 16px; border-left: 3px solid #3498db;">
+<p style="margin: 0 0 10px 0;"><strong>13:10</strong> —— 计算日线动量，确定目标列表。但不立即买入</p>
+<p style="margin: 0 0 10px 0;"><strong>检查最近30分钟趋势</strong> —— 上涨则买入，下跌则等待</p>
+<p style="margin: 0 0 10px 0;"><strong>13:40、14:10、14:40</strong> —— 三次复检</p>
+<p style="margin: 0;"><strong>14:55</strong> —— 强制买入所有剩余目标</p>
+</section>
+
+<p>逻辑是自洽的：日线动量告诉你"买什么"，分钟趋势告诉你"什么时候买"。</p>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">6.3 参数统计</h3>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>五福5.2至少11个可调参数：</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">走弱期判断（4指数、10日均线、3/4阈值）· 动量计算（25日、权重1→2、R²阈值0.4）· 成交量过滤（5日均量、比值1.8）· 日内趋势（30分钟、斜率阈值0.001）· 止损（5%）</p>
+</section>
+</section>
+
+<!-- ========== 第七章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 07</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">七星175——状态管理的"瑞士军刀"</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">7.1 核心创新：四状态管理</h3>
+
+<p>七星175同时监控四个独立状态：</p>
+
+<section style="background: #f0f7ff; border-left: 4px solid #3498db; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>状态一：A股弱</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">监测7只A股指数与10日均线的关系。4只以上跌破→进入A股弱，回避A股ETF。</p>
+</section>
+
+<section style="background: #f0f7ff; border-left: 4px solid #3498db; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>状态二：海外弱</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">监测4只海外代理ETF与10日均线的关系。2只以上走弱→进入海外弱，提高商品ETF买入门槛。</p>
+</section>
+
+<section style="background: #f0f7ff; border-left: 4px solid #3498db; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>状态三：纳斯达克暴跌空仓</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">监测纳指科技ETF的单日振幅。振幅≥3%且当日下跌→触发6日空仓期。</p>
+</section>
+
+<section style="background: #f0f7ff; border-left: 4px solid #3498db; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>状态四：震荡期</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">通过监控沪深300的乖离率、RSI等指标判断震荡期，切换滤波器。</p>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">7.2 滤波器切换</h3>
+
+<p><strong>拉普拉斯滤波器（正常期）：</strong>指数平滑，响应快，适合趋势跟踪。</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">def laplace_filter(price, s=0.05):
+    alpha = 1 - np.exp(-s)
+    L = np.zeros(len(price))
+    L[0] = price[0]
+    for t in range(1, len(price)):
+        L[t] = alpha * price[t] + (1 - alpha) * L[t - 1]
+    return L</pre>
+</section>
+
+<p><strong>高斯滤波器（震荡期）：</strong>权重呈钟形分布，对最近价格变化不敏感，适合过滤震荡噪音。</p>
+
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 16px 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;">def gaussian_filter_last_two(price, sigma=1.2):
+    n = len(price)
+    idx = np.arange(n)
+    weights = np.exp(-((idx + 1) ** 2) / (2 * sigma ** 2))[::-1]
+    weights /= np.sum(weights)
+    g1 = np.sum(price * weights)
+    g2 = np.sum(price[:-1] * weights[:-1])
+    return g1, g2</pre>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>逻辑自洽：</strong>趋势行情用拉普拉斯（快），震荡行情用高斯（稳）。</p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;"><strong>理论依据：</strong>拉普拉斯滤波器本质上是指数加权移动平均（EWMA），在金融时间序列分析中广泛使用（Tsay, 2010）。高斯滤波器则是经典的低通滤波器（Oppenheim & Schafer, 2010）。</p>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">7.3 参数统计</h3>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 14px 16px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>七星175至少17个可调参数：</strong></p>
+<p style="margin: 8px 0 0 0; font-size: 15px; line-height: 1.8;">A股弱（7指数、10日均线、4/7阈值）· 海外弱（4代理、10日均线、2/4阈值）· 纳指空仓（振幅3%、6日）· 震荡期（乖离率10%、RSI超买75、回落60）· 滤波器（拉普拉斯s=0.05、高斯σ=1.2）· R²过滤（0.35/0.32）· 其他（盈利保护5%、买入下限0.20）</p>
+</section>
+</section>
+
+<!-- ========== 第八章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 08</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">批判——哪里有问题？</h2>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #c0392b;">8.1 25日参数：过拟合的典型</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">从20日到30日，收益从208%到887%再到550%，波动极大。不存在平稳区域。一个具有经济学含义的参数，应该在合理范围内表现相对稳定。25日显然不满足这个条件。</p>
+<p style="margin: 10px 0 0 0; font-size: 15px; line-height: 1.8; font-weight: bold;">结论：25日很可能是一个过拟合的参数。</p>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #c0392b;">8.2 线性权重（1→2）：低效的"创新"</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">等效样本量≈24天，几乎等于等权。最新数据影响力≈19天等权，近期偏好极其有限。前10天仍占近40%权重，旧数据没有被有效衰减。</p>
+<p style="margin: 10px 0 0 0; font-size: 15px; line-height: 1.8; font-weight: bold;">结论：引入了额外的复杂度，却没有带来实质性的参数偏移。</p>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #c0392b;">8.3 池子膨胀：Beta被稀释</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">从4只到100只，池子扩大了25倍。宏观风险敞口被产业景气度稀释，过拟合空间指数级增长，交易成本上升。</p>
+<p style="margin: 10px 0 0 0; font-size: 15px; line-height: 1.8; font-weight: bold;">结论：池子膨胀是过拟合的重要来源。</p>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #c0392b;">8.4 五合一的逻辑撕裂</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">策略一/二（绝对动量）和策略三/四（相对动量）混在一起投票，在熊市中会导致错误开仓。</p>
+<p style="margin: 10px 0 0 0; font-size: 15px; line-height: 1.8; font-weight: bold;">结论：集成不能掩盖子策略的逻辑缺陷。</p>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #c0392b;">8.5 参数爆炸</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">五福至少11个可调参数，七星至少17个。17个参数，每个3-5个取值，组合空间是天文数字。</p>
+<p style="margin: 10px 0 0 0; font-size: 15px; line-height: 1.8; font-weight: bold;">结论：参数越多，过拟合风险越高。</p>
+</section>
+
+<section style="background: #f8f9fa; padding: 12px 16px; border-radius: 4px; margin: 16px 0; font-size: 14px; color: #666;">
+📖 <strong>Harvey, Liu & Zhu (2016) 的警示：</strong>由于多重假设检验问题，金融学中许多"显著"的因子可能是假阳性。对于17个参数的策略，t统计量需要远高于传统的2.0才能被认为是真实的。
+</section>
+</section>
+
+<!-- ========== 第九章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 09</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">能不能用？——实用主义者的回答</h2>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">9.1 哪些组件是可靠的</h3>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #27ae60; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">组件</th>
+<th style="padding: 10px 12px; text-align: center;">评级</th>
+<th style="padding: 10px 12px; text-align: left;">理由</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">annualized × R²</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #27ae60; font-weight: bold;">✅ 可靠</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">20年实盘背书</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">wywy的4只核心资产</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #27ae60; font-weight: bold;">✅ 可靠</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">宏观低相关，有理论依据</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">wywy的等权回归</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #27ae60; font-weight: bold;">✅ 可靠</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">统计学干净</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">五福的日内趋势确认</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #f39c12;">⚠️ 逻辑合理</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">但阈值需要验证</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px;">七星的滤波器切换</td>
+<td style="padding: 10px 12px; text-align: center; color: #f39c12;">⚠️ 逻辑合理</td>
+<td style="padding: 10px 12px;">但阈值需要验证</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">9.2 哪些组件需要怀疑</h3>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #c0392b; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">组件</th>
+<th style="padding: 10px 12px; text-align: center;">评级</th>
+<th style="padding: 10px 12px; text-align: left;">理由</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">25日参数</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #c0392b; font-weight: bold;">❌ 高度可疑</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">参数平原不平坦</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">线性权重1→2</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #c0392b; font-weight: bold;">❌ 低效</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">等效样本量≈24天</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">膨胀的ETF池</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #c0392b; font-weight: bold;">❌ 危险</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">Beta被稀释，过拟合空间大</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">五合一的策略三/四</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee; text-align: center; color: #c0392b; font-weight: bold;">❌ 逻辑撕裂</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">负分开仓</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<h3 style="font-size: 17px; font-weight: bold; color: #2c3e50; margin: 24px 0 12px 0;">9.3 如果你要使用这些策略</h3>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 12px 0; font-size: 16px; font-weight: bold; color: #27ae60;">第一，回到wywy1995的原始版本。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">4只ETF、等权回归、25日动量。它不够性感，但足够透明。你知道它在算什么，你知道每个参数为什么是这个值。</p>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 12px 0; font-size: 16px; font-weight: bold; color: #27ae60;">第二，如果非要加权，用指数衰减。</p>
+<section style="background: #1a1a2e; color: #a8d8a8; padding: 14px 16px; border-radius: 6px; margin: 12px 0 0 0; font-family: 'Menlo', 'Consolas', monospace; font-size: 13px; line-height: 1.6; overflow-x: auto;">
+<pre style="margin: 0; white-space: pre-wrap;"># ✅ 用这个（半衰期10天）
+halflife = 10
+weights = np.exp(-np.arange(len(y)) / halflife)</pre>
+</section>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #27ae60;">第三，做参数敏感性测试。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">把核心参数在合理范围内变动，观察策略表现是否剧烈变化。如果参数稍微一动收益就大幅下降，那策略是过拟合的。</p>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #27ae60;">第四，做样本外测试。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">用2015-2020年数据训练，2021-2026年数据测试。如果训练集上表现极好、测试集上表现极差，那就是过拟合。</p>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #27ae60;">第五，降低杠杆。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">回测曲线陡峭意味着波动也大。建议降低仓位。</p>
+</section>
+
+<section style="background: #eaf2e3; border-left: 4px solid #27ae60; padding: 16px 18px; margin: 20px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #27ae60;">第六，不要迷信回测曲线。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">回测是策略的"简历"，实盘才是策略的"面试"。简历可以润色，面试骗不了人。</p>
+</section>
+</section>
+
+<!-- ========== 第十章 ========== -->
+<section style="margin-top: 40px;">
+<p style="font-size: 14px; color: #c0392b; font-weight: bold; letter-spacing: 1px; margin-bottom: 6px;">CHAPTER 10</p>
+<h2 style="font-size: 20px; font-weight: bold; color: #1a1a1a; margin: 0 0 20px 0; padding-bottom: 10px; border-bottom: 1px solid #eee;">结语——一条因子的十年漂流</h2>
+</section>
+
+<p>让我们最后一次回望：</p>
+
+<section style="margin: 20px 0; overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+<thead>
+<tr style="background: #2c3e50; color: #fff;">
+<th style="padding: 10px 12px; text-align: left;">年份</th>
+<th style="padding: 10px 12px; text-align: left;">事件</th>
+<th style="padding: 10px 12px; text-align: left;">关键人物</th>
+</tr>
+</thead>
+<tbody>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">1993</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">Jegadeesh & Titman记录动量效应</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">学术界</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">2013</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">Asness等证明动量因子全球有效</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">学术界</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">2017</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">《趋势永存》出版</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">Clenow</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">2019</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">慕长风和Ahfu把书带到聚宽社区</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">慕长风、Ahfu</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">2020</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">wywy1995把因子从股票移植到ETF</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">wywy1995</td>
+</tr>
+<tr>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">2024-2025</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">璐璐202006池子膨胀到100只</td>
+<td style="padding: 10px 12px; border-bottom: 1px solid #eee;">璐璐202006</td>
+</tr>
+<tr style="background: #f9f9f9;">
+<td style="padding: 10px 12px;">2025-2026</td>
+<td style="padding: 10px 12px;">五福和七星成为社区最火策略</td>
+<td style="padding: 10px 12px;">五福、七星</td>
+</tr>
+</tbody>
+</table>
+</section>
+
+<section style="background: #fdf2f2; border-left: 4px solid #c0392b; padding: 16px 18px; margin: 24px 0; border-radius: 0 4px 4px 0;">
+<p style="margin: 0 0 10px 0; font-size: 16px; font-weight: bold; color: #c0392b;">一条公式，从一本英文书出发，经过至少五个人的手，演化成了两个截然不同的策略。</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.8;"><strong>能用的核心原因：</strong>底层因子有20年实盘背书。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;"><strong>不能盲目用的核心原因：</strong>在这个可靠因子的基础上，叠加了太多"在回测中调出来的"参数和条件。池子从4只膨胀到100只，参数从0个增加到17个以上。</p>
+</section>
+
+<p>如果你能剥离那些过拟合的"装饰"，只保留核心的动量因子和合理的风控逻辑——那它们是有用的。如果你原封不动地拿去实盘——<strong style="color: #c0392b;">回测如画，实盘拉胯。</strong></p>
+
+<!-- 三句话总结 -->
+<section style="background: #1a1a2e; color: #e0e0e0; padding: 20px; border-radius: 8px; margin: 30px 0;">
+<p style="margin: 0 0 14px 0; font-size: 16px; font-weight: bold; text-align: center; color: #f39c12;">如果你只带走三句话</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.8;">1. <strong style="color: #e74c3c;">25日参数很可能过拟合了</strong>——从20到30，收益波动极大，不存在平稳区域。</p>
+<p style="margin: 0 0 10px 0; font-size: 15px; line-height: 1.8;">2. <strong style="color: #e74c3c;">线性权重（1→2）是低效的"创新"</strong>——等效样本量≈24天，几乎等于没加权。</p>
+<p style="margin: 0; font-size: 15px; line-height: 1.8;">3. <strong style="color: #e74c3c;">池子从4只膨胀到100只，Beta被稀释了</strong>——宏观风险敞口变成了产业景气度大杂烩。</p>
+</section>
+
+<!-- 参考文献 -->
+<section style="margin-top: 36px; padding-top: 20px; border-top: 2px solid #eee;">
+<p style="font-size: 14px; color: #999; letter-spacing: 1px; margin-bottom: 12px;">参考文献</p>
+<ol style="font-size: 13px; color: #888; line-height: 2; padding-left: 20px;">
+<li>Jegadeesh, N., & Titman, S. (1993). Returns to Buying Winners and Selling Losers. <em>Journal of Finance</em>, 48(1), 65-91.</li>
+<li>Asness, C. S., Moskowitz, T. J., & Pedersen, L. H. (2013). Value and Momentum Everywhere. <em>Journal of Finance</em>, 68(3), 929-985.</li>
+<li>Novy-Marx, R. (2013). The Other Side of Value. <em>Journal of Financial Economics</em>, 108(1), 1-28.</li>
+<li>Clenow, A. F. (2017). <em>Stocks on the Move</em>. John Wiley & Sons.</li>
+<li>Brinson, G. P., Hood, L. R., & Beebower, G. L. (1986). Determinants of Portfolio Performance. <em>Financial Analysts Journal</em>, 42(4), 39-44.</li>
+<li>Ross, S. A. (1976). The Arbitrage Theory of Capital Asset Pricing. <em>Journal of Economic Theory</em>, 13(3), 341-360.</li>
+<li>Kish, L. (1965). <em>Survey Sampling</em>. John Wiley & Sons.</li>
+<li>Tsay, R. S. (2010). <em>Analysis of Financial Time Series</em> (3rd ed.). John Wiley & Sons.</li>
+<li>Oppenheim, A. V., & Schafer, R. W. (2010). <em>Discrete-Time Signal Processing</em> (3rd ed.). Pearson.</li>
+<li>Harvey, C. R., Liu, Y., & Zhu, H. (2016). ... and the Cross-Section of Expected Returns. <em>Review of Financial Studies</em>, 29(1), 5-68.</li>
+<li>Murphy, J. J. (1999). <em>Technical Analysis of the Financial Markets</em>. New York Institute of Finance.</li>
+<li>Wilder, J. W. (1978). <em>New Concepts in Technical Trading Systems</em>. Trend Research.</li>
+</ol>
+</section>
+
+</section>
+
+</body>
+</html>
