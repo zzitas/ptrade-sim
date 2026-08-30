@@ -55,17 +55,17 @@ STOCK_NAMES = {
 BASE_PRICE = {code: 1.0 + (i % 10) * 0.35 for i, code in enumerate(DEFAULT_UNIVERSE)}
 BASE_VOL = {code: 5_000_000 + i * 800_000 for i, code in enumerate(DEFAULT_UNIVERSE)}
 
-TRADE_TIMES = []  # 9:30-11:30, 13:00-15:00 每 3 分钟一个 bar
-for h, m in [(9, 30)]:
-    pass
+TRADE_TIMES = []  # 9:30-11:30, 13:00-15:00 每 1 分钟一个 bar
 _t = dt.time(9, 30)
 while _t <= dt.time(11, 30):
     TRADE_TIMES.append(_t)
-    _t = (dt.datetime(2000, 1, 1, _t.hour, _t.minute) + dt.timedelta(minutes=3)).time()
+    _t = (dt.datetime(2000, 1, 1, _t.hour, _t.minute)
+          + dt.timedelta(minutes=1)).time()
 _t = dt.time(13, 0)
 while _t <= dt.time(15, 0):
     TRADE_TIMES.append(_t)
-    _t = (dt.datetime(2000, 1, 1, _t.hour, _t.minute) + dt.timedelta(minutes=3)).time()
+    _t = (dt.datetime(2000, 1, 1, _t.hour, _t.minute)
+          + dt.timedelta(minutes=1)).time()
 
 
 def is_trade_date(day: dt.date) -> bool:
