@@ -489,13 +489,39 @@ class SimEngine:
             self.log.error(f"{name} 异常:\n" + traceback.format_exc())
 
     def _ctx(self):
-        blotter = type("Blotter", (), {"current_dt": self.now})()
-        return type("Context", (), {
-            "now": self.now, "current_dt": self.now,
-            "previous_date": self.ds.prev_trade_date(self.now.date()),
-            "blotter": blotter,
-            "portfolio": self._portfolio(),
-        })()
+        """返回单例 Context(initialize/handle_data 共享同一对象,
+        使策略在 initialize 中写入的自定义属性在后续 handle_data 中可见)。
+        portfolio 用 @property 实时反映当前 cash/positions。
+
+        修复:之前每次 type("Context")() 重建对象,导致 initialize 里
+        的 context.stocks = [...] / ref_price = {} / prev_value = ... 等
+        在 handle_data 看到的全是默认值,被静默废掉。"""
+        if not hasattr(self, "_ctx_obj") or self._ctx_obj is None:
+            ctx = type("Context", (), {})()
+            ctx.now = self.now
+            ctx.current_dt = self.now
+            ctx.previous_date = self.ds.prev_trade_date(self.now.date())
+            blotter = type("Blotter", (), {"current_dt": self.now})()
+            ctx.blotter = blotter
+            ctx.stocks = []
+            ctx.ref_price = {}
+            ctx.prev_value = self.cash + sum(
+                p.value for p in self.positions.values())
+            ctx.capital_base = self.start_capital
+            ctx.unit_net_value = 1.0
+
+            def _portfolio_prop(_):
+                return self._portfolio()
+            ctx.__class__ = type(
+                "Context", (),
+                {**ctx.__class__.__dict__, "portfolio": property(_portfolio_prop)})
+            self._ctx_obj = ctx
+        ctx = self._ctx_obj
+        ctx.now = self.now
+        ctx.current_dt = self.now
+        ctx.previous_date = self.ds.prev_trade_date(self.now.date())
+        ctx.blotter.current_dt = self.now
+        return ctx
 
     def _portfolio(self):
         pos_val = sum(p.value for p in self.positions.values())
