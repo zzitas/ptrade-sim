@@ -204,6 +204,10 @@ class RealDataSource:
         if getattr(self, "log", None):
             self.log.info(msg)
 
+    def _debug(self, msg):
+        if getattr(self, "log", None):
+            self.log.debug(msg)
+
     # ---------- 全市场 ETF 列表 ----------
     def all_etfs(self, max_age_days=7):
         """全市场 ETF 列表 [(code, name), ...]。东财 clist,本地缓存 7 天。"""
@@ -216,24 +220,32 @@ class RealDataSource:
                     rows = list(csv.DictReader(f))
                 if rows:
                     return self._drop_bad([(r["code"], r["name"]) for r in rows])
-        try:
-            pairs = self._fetch_etf_list()
-            if pairs:
-                with open(path, "w", encoding="utf-8", newline="") as f:
-                    w = csv.writer(f)
-                    w.writerow(["code", "name"])
-                    w.writerows(pairs)
-                for c, n in pairs:          # 名称入缓存,批量下载时可免名称查询
-                    self.names.setdefault(c, n)
-                self._info(f"全市场 ETF 列表已更新: {len(pairs)} 只")
-                return self._drop_bad(pairs)
-        except Exception as e:
-            self._warn(f"全市场 ETF 列表获取失败: {e}")
+        # 网络瞬态重试一次(2s 退避)
+        last_err = None
+        for attempt in range(2):
+            try:
+                pairs = self._fetch_etf_list()
+                if pairs:
+                    with open(path, "w", encoding="utf-8", newline="") as f:
+                        w = csv.writer(f)
+                        w.writerow(["code", "name"])
+                        w.writerows(pairs)
+                    for c, n in pairs:          # 名称入缓存,批量下载时可免名称查询
+                        self.names.setdefault(c, n)
+                    self._info(f"全市场 ETF 列表已更新: {len(pairs)} 只")
+                    return self._drop_bad(pairs)
+                last_err = "fetch 返回空"
+            except Exception as e:
+                last_err = str(e)
+                if attempt == 0:
+                    self._debug(f"ETF 列表首次拉取失败,重试: {e}")
+                    time.sleep(2)
+        self._debug(f"全市场 ETF 列表获取失败(已重试): {last_err}")
         if os.path.exists(path):
             with open(path, encoding="utf-8") as f:
                 rows = list(csv.DictReader(f))
             if rows:
-                self._warn("全市场列表获取失败,使用过期缓存")
+                self._debug("使用过期缓存兜底")
                 return self._drop_bad([(r["code"], r["name"]) for r in rows])
         return []
 
@@ -253,31 +265,41 @@ class RealDataSource:
                     rows = list(csv.DictReader(f))
                 if rows:
                     return self._drop_bad([(r["code"], r["name"]) for r in rows])
-        try:
-            pairs = self._fetch_Ashare_list()
-            if pairs:
-                with open(path, "w", encoding="utf-8", newline="") as f:
-                    w = csv.writer(f)
-                    w.writerow(["code", "name"])
-                    w.writerows(pairs)
-                for c, n in pairs:
-                    self.names.setdefault(c, n)
-                self._info(f"全市场 A 股列表已更新: {len(pairs)} 只")
-                return self._drop_bad(pairs)
-        except Exception as e:
-            self._warn(f"全市场 A 股列表获取失败: {e}")
+        # 网络瞬态(RemoteDisconnected/Timeout)重试一次,2s 后退避
+        last_err = None
+        for attempt in range(2):
+            try:
+                pairs = self._fetch_Ashare_list()
+                if pairs:
+                    with open(path, "w", encoding="utf-8", newline="") as f:
+                        w = csv.writer(f)
+                        w.writerow(["code", "name"])
+                        w.writerows(pairs)
+                    for c, n in pairs:
+                        self.names.setdefault(c, n)
+                    self._info(f"全市场 A 股列表已更新: {len(pairs)} 只")
+                    return self._drop_bad(pairs)
+                last_err = "fetch 返回空"
+            except Exception as e:
+                last_err = str(e)
+                if attempt == 0:
+                    self._debug(f"全市场 A 股列表首次拉取失败,重试: {e}")
+                    time.sleep(2)
+        self._debug(f"全市场 A 股列表获取失败(已重试): {last_err}")
         if os.path.exists(path):
             with open(path, encoding="utf-8") as f:
                 rows = list(csv.DictReader(f))
             if rows:
-                self._warn("全市场 A 股列表获取失败,使用过期缓存")
+                self._debug("使用过期缓存兜底")
                 return self._drop_bad([(r["code"], r["name"]) for r in rows])
         return []
 
     def _fetch_Ashare_list(self):
-        """全市场 A 股列表: 东财 clist 沪深A股(m:0+t:2 沪A, m:1+t:2 深A),
-        按代码段筛出 A 股。"""
-        items = self._fetch_clist("m:0+t:2,m:1+t:2")
+        """全市场 A 股列表: 东财 clist 沪深A股全量
+        (m:1+t:2 沪主板, m:1+t:23 科创板, m:0+t:6 深主板, m:0+t:80 创业板),
+        全 A 约 5300 只,分页上限放宽到 90 页。"""
+        items = self._fetch_clist("m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23",
+                                  max_pages=90)
         return self._normalize_Ashares(items)
 
     def _drop_bad(self, pairs):
@@ -574,7 +596,7 @@ class RealDataSource:
         bar = self.daily_bar(code, day)
         c = float(bar.get("close", 0.0) or 0.0)
         if not c:
-            return 0.0
+            return None
         o = float(bar.get("open", 0.0) or 0.0)
         if tm is None or tm >= dt.time(15, 0) or not o:
             return round(c, 4)
