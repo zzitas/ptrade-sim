@@ -148,17 +148,27 @@ def prev_trade_date(day: dt.date) -> dt.date:
 
 
 def security_info(code):
+    """合成数据源的安全 info: 字段尽量对齐 PTrade。"""
     num = code.split(".")[0]
     is_stock = num.startswith(("600", "601", "603", "605", "000", "001",
                                "002", "003", "300", "301", "688", "689"))
     if code in SEC_NAMES:
         name = SEC_NAMES[code]
-        return {"display_name": name, "name": name, "start_date": "2010-01-01",
-                "end_date": "2999-12-31", "type": "etf"}
-    name = STOCK_NAMES.get(code, num)
+        sec_type = "etf"
+        listed = "2010-01-01"
+    else:
+        name = STOCK_NAMES.get(code, num)
+        sec_type = "stock" if is_stock else "etf"
+        listed = "2015-01-01" if is_stock else "2010-01-01"
+    mkt = code.split(".")[-1] if "." in code else "SS"
+    exchange = "SSE" if mkt in ("SS", "XSHG", "XBHS") else "SZSE"
     return {
-        "display_name": name, "name": name,
-        "start_date": "2015-01-01" if is_stock else "2010-01-01",
-        "end_date": "2999-12-31",
-        "type": "stock" if is_stock else "etf",
+        "code": code, "symbol": code,
+        "name": name, "display_name": name,
+        "type": sec_type, "exchange": exchange,
+        "listed_date": listed, "start_date": listed,
+        "de_listed_date": "", "end_date": "2999-12-31",
+        "industry_code": "", "industry_name": "",
+        "industry": "", "concept": [],
+        "status": "N", "is_st": False, "is_halt": False,
     }

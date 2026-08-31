@@ -620,6 +620,59 @@ class RealDataSource:
             self.daily_bar(code, day).get("_paused", False)
 
     def security_info(self, code):
-        name = self.names.get(code, code.split(".")[0] + "ETF")
-        return {"display_name": name, "name": name, "start_date": "2018-01-01",
-                "end_date": "2999-12-31", "type": "etf"}
+        """返回证券元信息 dict(对齐 PTrade get_security_info/get_stock_info)。
+        真实字段(行业/概念)在 TDX/网络源不可用,用代码段+确定性合成保证稳定。"""
+        num, mkt = code.split(".") if "." in code else (code, "SS")
+        name = self.names.get(code, num + ("ETF" if num.startswith(("15", "5")) else ""))
+        # 证券类型:ETF / stock / index
+        # ETF: 沪市 5xxxxx + 深市 1xxxxx
+        if (num.startswith("5") and len(num) == 6) or \
+           (num.startswith("1") and len(num) == 6):
+            sec_type = "etf"
+        # 指数: 000xxx.SH (沪深 300 等), 399xxx.SZ, 中证 000xxx
+        elif (mkt == "XSHG" and num.startswith(("000", "999"))) \
+                or (mkt == "XBHS") \
+                or (mkt == "SZ" and num.startswith(("399", "980"))):
+            sec_type = "index"
+        else:
+            sec_type = "stock"
+        # 交易所
+        exchange = "SSE" if mkt in ("SS", "XSHG", "XBHS") else "SZSE"
+        # 上市日期: 按代码段+哈希确定性合成
+        import hashlib as _hl_s
+        s = int(_hl_s.md5(("meta|" + code).encode("utf-8")).hexdigest()[:8], 16)
+        if sec_type == "etf":
+            listed = "2010-01-01" if s % 4 == 0 else "2013-06-01" if s % 4 == 1 \
+                else "2015-04-15" if s % 4 == 2 else "2018-12-05"
+        elif sec_type == "stock":
+            base_year = 1990 + (s % 35)
+            listed = f"19{base_year:02d}-01-01" if num.startswith(("60", "00", "002")) \
+                else f"20{9 + s % 17:02d}-10-15"
+        else:
+            listed = "2005-01-01"
+        # 行业代码: 按 6 大行业按代码段伪随机分配(无真实行业分类表)
+        ind_pool = [
+            ("801010", "农林牧渔"), ("801020", "采掘"), ("801030", "化工"),
+            ("801040", "钢铁"), ("801080", "电子"), ("801110", "家用电器"),
+            ("801120", "食品饮料"), ("801130", "纺织服装"), ("801140", "轻工制造"),
+            ("801150", "医药生物"), ("801160", "公用事业"), ("801170", "交通运输"),
+            ("801180", "房地产"), ("801200", "商贸零售"), ("801210", "休闲服务"),
+            ("801230", "综合"), ("801710", "建筑材料"), ("801720", "建筑装饰"),
+            ("801730", "电气设备"), ("801740", "国防军工"), ("801750", "计算机"),
+            ("801760", "传媒"), ("801770", "通信"), ("801780", "银行"),
+            ("801790", "非银金融"), ("801880", "汽车"), ("801890", "机械设备"),
+        ]
+        ind_code, ind_name = ind_pool[s % len(ind_pool)]
+        # 状态: 退市股票(empty) 给空日期, 其余给 2999-12-31
+        return {
+            "code": code, "symbol": code,
+            "name": name, "display_name": name,
+            "type": sec_type, "exchange": exchange,
+            "listed_date": listed, "start_date": listed,
+            "de_listed_date": "", "end_date": "2999-12-31",
+            "industry_code": ind_code, "industry_name": ind_name,
+            "industry": ind_name,  # 兼容别名
+            "concept": [],  # 无概念分类数据
+            "status": "N",  # N=normal, ST/HALT 由其他 API 查询
+            "is_st": False, "is_halt": False,
+        }

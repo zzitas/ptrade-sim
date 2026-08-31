@@ -814,7 +814,30 @@ def build_api(engine):
     api["get_trading_day"] = get_trading_day
     api["get_prev_trade_date"] = lambda days=1: engine.ds.prev_trade_date(
         engine.now.date() - dt.timedelta(days=days - 1)).isoformat()
-    api["get_security_info"] = lambda code: type("SI", (), engine.ds.security_info(code))()
+    def _si_obj(code):
+        """SI: 行为如 dict, 同时支持属性访问(.code/.name/.type 等)。"""
+        data = engine.ds.security_info(code)
+        obj = type("SI", (), data)()
+        for k, v in data.items():
+            try:
+                setattr(obj, k, v)
+            except (AttributeError, TypeError):
+                pass
+        obj.__getitem__ = lambda self, k: data[k]
+        obj.items = lambda: data.items()
+        obj.keys = lambda: data.keys()
+        obj.values = lambda: data.values()
+        obj.get = lambda k, default=None: data.get(k, default)
+        return obj
+
+    def get_security_info(codes):
+        """PTrade 语义: 单只代码返回 SI 对象;列表返回 {code: SI};字符串/列表都支持。"""
+        if isinstance(codes, str):
+            return _si_obj(codes)
+        return {c: _si_obj(c) for c in codes}
+
+    api["get_security_info"] = get_security_info
+    api["get_stock_info"] = get_security_info
     api["get_security_name"] = lambda code: engine.ds.security_info(code)["display_name"]
     def _index_stocks(index):
         """模拟指数成分: 全A池的确定性子集(真实成分名单不在本地数据范围)。"""
