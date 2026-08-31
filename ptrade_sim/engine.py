@@ -1040,6 +1040,13 @@ def build_api(engine):
     api["get_stock_name"] = api["get_security_name"]
     api["get_stock_info"] = api["get_security_info"]
     api["get_volume_ratio"] = lambda code: 1.0 + (zlib.crc32(f"{code}{engine.now.date()}".encode()) % 100) / 100.0
+
+    def set_volume_ratio(volume_ratio=None, **kw):
+        """PTrade 语义: 设置全局量比阈值(影响 get_volume_ratio 过滤);
+        模拟器即时成交,量比是合成值,此函数 no-op 仅记录日志。"""
+        engine.log.info(f"set_volume_ratio: 阈值={volume_ratio} (模拟器合成量比,no-op)")
+
+    api["set_volume_ratio"] = set_volume_ratio
     api["get_stock_blocks"] = lambda code: []
     def get_fundamentals(stocks, table="valuation", fields=None, date=None,
                          **kw):
