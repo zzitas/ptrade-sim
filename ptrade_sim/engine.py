@@ -354,6 +354,9 @@ class SimEngine:
             setattr(strategy, k, v)
         if not hasattr(strategy, "g"):
             strategy.g = type("G", (), {})()
+        # 同步当前时间到策略 g,便于数据访问层按"已收盘"过滤
+        if strategy.g is not None:
+            strategy.g._now = self.now
         if hasattr(strategy, "log") and getattr(strategy.log, "_pt_proxy", False):
             # 移植策略的日志代理: 接到引擎日志后端
             strategy.log._pt_backend = self.log
@@ -389,6 +392,9 @@ class SimEngine:
                 if self.stop_flag:
                     break
                 self.now = dt.datetime.combine(day, tm)
+                # 同步当前时间到策略 g 全局,便于数据访问层按"已收盘"过滤
+                if hasattr(strategy, "g") and strategy.g is not None:
+                    strategy.g._now = self.now
                 self._run_scheduled(tm)
                 self._run_intervals()
                 self._safe(strategy, "handle_data", data=self._make_data())
@@ -402,6 +408,8 @@ class SimEngine:
             self.now = dt.datetime.combine(day, max(
                 [dt.time(15, 0)] + [j["time"] for j in self.daily_jobs
                                     if not j.get("every_bar") and j["time"] > dt.time(15, 0)]))
+            if hasattr(strategy, "g") and strategy.g is not None:
+                strategy.g._now = self.now
             self._safe(strategy, "after_trading_end", data=self._make_data())
             self._mark_equity(day)
         return self.report()
@@ -491,11 +499,7 @@ class SimEngine:
     def _ctx(self):
         """返回单例 Context(initialize/handle_data 共享同一对象,
         使策略在 initialize 中写入的自定义属性在后续 handle_data 中可见)。
-        portfolio 用 @property 实时反映当前 cash/positions。
-
-        修复:之前每次 type("Context")() 重建对象,导致 initialize 里
-        的 context.stocks = [...] / ref_price = {} / prev_value = ... 等
-        在 handle_data 看到的全是默认值,被静默废掉。"""
+        portfolio 用 @property 实时反映当前 cash/positions。"""
         if not hasattr(self, "_ctx_obj") or self._ctx_obj is None:
             ctx = type("Context", (), {})()
             ctx.now = self.now
@@ -594,6 +598,8 @@ def build_api(engine):
     # 交易
     def order(code, amount, limit_price=None):
         if amount == 0:
+            engine.log.debug(f"order 跳过: {code} 委托股数为 0"
+                             "(行情缺失或资金/股数取整后不足一手)")
             return None
         return engine._match(code, "buy" if amount > 0 else "sell", abs(int(amount)))
 
@@ -615,11 +621,32 @@ def build_api(engine):
         engine.log.warn("模拟环境: cancel_order 未实现(即时成交,无挂单)")
 
     def get_orders(*a, **k):
+        """PTrade 语义: 返回当日全部委托(已成交 + 未成交 + 已撤单);
+        模拟器: 即时成交模型下,所有委托都已完成,直接返回 engine.orders。"""
         return {o.order_id: o for o in engine.orders}
+
+    def get_open_orders(*a, **k):
+        """PTrade 语义: 返回未成交的挂单(pending);
+        模拟器即时成交:始终返回空字典。"""
+        return {}
+
+    def get_trades(*a, **k):
+        """PTrade 语义: 返回当日成交回报(Trade 对象);
+        模拟器: 把 orders 包装为 {order_id: {code, side, amount, price, time}}。"""
+        out = {}
+        for o in engine.orders:
+            out[o.order_id] = {
+                "code": o.code, "side": o.side, "amount": getattr(o, "filled", o.amount),
+                "filled": getattr(o, "filled", o.amount),
+                "price": o.price, "time": o.time,
+                "status": getattr(o, "status", "filled"),
+            }
+        return out
 
     api.update(order=order, order_target=order_target, order_value=order_value,
                order_target_value=order_target_value, order_market=order_market,
-               cancel_order=cancel_order, get_orders=get_orders)
+               cancel_order=cancel_order, get_orders=get_orders,
+               get_open_orders=get_open_orders, get_trades=get_trades)
 
     # 账户
     api["get_stock_positions"] = lambda *a, **k: [
@@ -790,15 +817,16 @@ def build_api(engine):
     api["get_security_info"] = lambda code: type("SI", (), engine.ds.security_info(code))()
     api["get_security_name"] = lambda code: engine.ds.security_info(code)["display_name"]
     def _index_stocks(index):
-        """模拟指数成分: 样本A股池的确定性子集(真实成分名单不在本地数据范围)。"""
-        pool = sorted(simdata.DEFAULT_STOCK_POOL)
+        """模拟指数成分: 全A池的确定性子集(真实成分名单不在本地数据范围)。"""
+        pool = sorted(get_Ashares())
         n = min(120, len(pool))
         step = max(len(pool) // max(n, 1), 1)
         members = pool[::step][:n]
         if not getattr(engine, "_idx_warned", False):
+            src = "全A真实列表" if len(pool) > 100 else "样本池"
             engine.log.warn(
                 f"模拟器: 指数 {index} 使用近似成分股 {len(members)} 只"
-                "(真实成分名单不在本地数据范围)")
+                f"(池来源: {src};真实成分名单不在本地数据范围)")
             engine._idx_warned = True
         return list(members)
     api["get_index_stocks"] = _index_stocks
@@ -814,6 +842,45 @@ def build_api(engine):
                 pass
         return list(simdata.DEFAULT_STOCK_POOL)
     api["get_Ashares"] = get_Ashares
+
+    # ---- 行业/概念/板块/新股 ----
+    # 真实 PTrade get_industry / get_industry_stocks 在恒生端有完整数据;
+    # 模拟器无全行业分类表,返回股票池本身(让策略能跑通,结果等同于全选)
+    def get_industry(security):
+        """PTrade 语义: 返回单个股票所属行业代码(如 '801010' 农林牧渔);
+        模拟器无数据,返回 None 表示未知。"""
+        if not security:
+            return None
+        try:
+            engine.ds.daily_bar(security, engine.now.date())
+        except Exception:
+            return None
+        return None
+    api["get_industry"] = get_industry
+
+    def get_industry_stocks(industry_code, date=None):
+        """行业成分股: 真实 PTrade 返回该行业当日全部成分股;
+        模拟器无行业分类,返回空列表(策略应配合 try/except 兜底)."""
+        return []
+    api["get_industry_stocks"] = get_industry_stocks
+
+    def get_concept_stocks(concept_code, date=None):
+        """概念成分股(同行业,真实数据不可用时返回空)。"""
+        return []
+    api["get_concept_stocks"] = get_concept_stocks
+
+    def get_zt_stocks(date=None):
+        """涨停股票池: 真实 PTrade 返回当日涨停股票代码集合;
+        模拟器无全 A 行情快查能力,返回空集合(避免对 N 只池子全量 check_limit
+        拖慢回测;策略应自行维护涨停列表)。"""
+        return set()
+    api["get_zt_stocks"] = get_zt_stocks
+
+    def get_garage_data(date=None):
+        """新股日历查询(打新): 真实 PTrade 返回当日可申购新股列表;
+        模拟器无新股数据,返回空列表。回测中打新本就不应触发,空即可。"""
+        return []
+    api["get_garage_data"] = get_garage_data
 
     def get_all_Ashare_daily(stocks=None, start_date=None, end_date=None,
                              fields=None, fq="pre", count=None, **kw):
@@ -1003,6 +1070,51 @@ def build_api(engine):
             df = df[[f for f in fl if f in df.columns]]
         return df.sort_index()
     api["get_fundamentals"] = get_fundamentals
+
+    def pt_batch_fundamentals(codes, table="valuation", fields=None,
+                               date=None, chunk=200, **kw):
+        """批量基本面查询: 真机上单次 API 可拉 N 只的财务字段(走 is_dict=True);
+        模拟器上按单只合成但内部复用同一批价格(避免 N 次 daily_bar IO)。
+        返回 DataFrame(index=code, columns=fields)。
+        """
+        codes = list(dict.fromkeys(codes or []))
+        fl = [fields] if isinstance(fields, str) else (list(fields) if fields
+                                                       else ["a_floats",
+                                                             "float_value",
+                                                             "total_value"])
+        d = date or engine.ds.prev_trade_date(engine.now.date())
+        if isinstance(d, str):
+            d = dt.date.fromisoformat(d)
+        if not codes:
+            return pd.DataFrame(columns=fl)
+        # 优先尝试真机原生批量(恒生 PTrade 支持 get_fundamentals(列表)+is_dict)
+        rows = {}
+        native = getattr(engine.ds, "get_fundamentals", None) \
+            if not isinstance(engine.ds, type) and hasattr(engine.ds, "get_fundamentals") \
+            else None
+        # 模拟器自带 get_fundamentals(上面注册的)循环 N 次,直接复用即可:
+        try:
+            df = api["get_fundamentals"](codes, table=table, fields=fl,
+                                          date=d, **kw)
+            return df
+        except Exception:
+            pass
+        # 兜底: 手工合成(理论上用不到)
+        for c in codes:
+            try:
+                px = float(engine.ds.daily_bar(c, d).get("close") or 0.0)
+            except Exception:
+                px = 0.0
+            seed = zlib.crc32(("fund|" + c).encode("utf-8"))
+            af = 0.8e8 + (seed % 900) * 1e6
+            rows[c] = {"a_floats": af, "float_value": af * px,
+                       "total_value": af * px * (1.1 + (seed % 40) / 100.0)}
+        df = pd.DataFrame.from_dict(rows, orient="index")
+        if fl:
+            df = df[[f for f in fl if f in df.columns]]
+        return df.sort_index()
+
+    api["pt_batch_fundamentals"] = pt_batch_fundamentals
     api["get_gear_price"] = lambda code: {"bid": engine.get_price(code), "ask": engine.get_price(code)}
 
     # 调度(兼容 run_daily(func, time) 与 PTrade 官方 run_daily(context, func, time='9:30') 两种写法)
